@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نبض الفيت - Pulse Fit AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #0b0f19; color: #f3f4f6; overflow-x: hidden; }
+        
+        /* 3D Neumorphism & Glassmorphism styles */
+        .card-3d {
+            background: linear-gradient(145deg, #131b2e, #0e1422);
+            box-shadow: 10px 10px 20px #06090e, -10px -10px 20px #1a253e;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .card-3d:hover {
+            transform: translateY(-2px);
+            box-shadow: 12px 12px 25px #05070b, -12px -12px 25px #1f2d4e;
+        }
+        .btn-3d {
+            background: linear-gradient(145deg, var(--theme-primary), var(--theme-dark));
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.5), -2px -2px 6px rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+        .btn-3d:active {
+            transform: scale(0.97);
+            box-shadow: inset 3px 3px 6px rgba(0,0,0,0.6);
+        }
+        .input-3d {
+            background: #090d16;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 3px 3px 6px #04060a, inset -3px -3px 6px #121828;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .input-3d:focus {
+            border-color: var(--theme-primary);
+            box-shadow: inset 3px 3px 6px #04060a, inset -3px -3px 6px #121828, 0 0 10px var(--theme-glow);
+            outline: none;
+        }
+        
+        /* Theme Variables */
+        :root {
+            --theme-primary: #00f2fe;
+            --theme-dark: #0072ff;
+            --theme-glow: rgba(0, 242, 254, 0.4);
+        }
+        .theme-cyan { --theme-primary: #00f2fe; --theme-dark: #0072ff; --theme-glow: rgba(0, 242, 254, 0.4); }
+        .theme-emerald { --theme-primary: #10b981; --theme-dark: #047857; --theme-glow: rgba(16, 185, 129, 0.4); }
+        .theme-ruby { --theme-primary: #f43f5e; --theme-dark: #be123c; --theme-glow: rgba(244, 63, 94, 0.4); }
+        .theme-gold { --theme-primary: #fbbf24; --theme-dark: #d97706; --theme-glow: rgba(251, 191, 36, 0.4); }
+        .theme-violet { --theme-primary: #8b5cf6; --theme-dark: #6d28d9; --theme-glow: rgba(139, 92, 246, 0.4); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    </style>
+</head>
+<body class="theme-cyan pb-20">
+
+    <!-- شريط التنقل العلوي وتغيير الثيمات 3D -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-[#0b0f19]/80 border-b border-gray-800 px-4 py-3">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-xl btn-3d flex items-center justify-center text-white font-black text-xl shadow-lg">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wider">نبض الفيت <span style="color: var(--theme-primary);">AI</span></h1>
+                    <p class="text-xs text-gray-400">مساعدك الذكي للتمرين والماكروز</p>
+                </div>
+            </div>
+            <!-- محول الثيمات 3D -->
+            <div class="flex items-center space-x-1.5 space-x-reverse bg-[#090d16] p-1.5 rounded-2xl input-3d">
+                <button onclick="setTheme('cyan')" class="w-6 h-6 rounded-full bg-[#00f2fe] shadow-md transition transform hover:scale-110" title="سماوي سبربانك"></button>
+                <button onclick="setTheme('emerald')" class="w-6 h-6 rounded-full bg-[#10b981] shadow-md transition transform hover:scale-110" title="زمردي"></button>
+                <button onclick="setTheme('ruby')" class="w-6 h-6 rounded-full bg-[#f43f5e] shadow-md transition transform hover:scale-110" title="ياقوتي"></button>
+                <button onclick="setTheme('gold')" class="w-6 h-6 rounded-full bg-[#fbbf24] shadow-md transition transform hover:scale-110" title="ذهبي"></button>
+                <button onclick="setTheme('violet')" class="w-6 h-6 rounded-full bg-[#8b5cf6] shadow-md transition transform hover:scale-110" title="بنفسجي"></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+
+        <!-- لوحة الإحصائيات المتحركة 3D -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="card-3d p-4 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">إجمالي التمارين</p>
+                    <h3 id="stat-total-workouts" class="text-2xl font-black text-white mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-dumbbell"></i>
+                </div>
+            </div>
+            <div class="card-3d p-4 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">السعرات المحروقة</p>
+                    <h3 id="stat-total-cals" class="text-2xl font-black text-white mt-1">0 <span class="text-xs font-normal text-gray-400">سعرة</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-fire"></i>
+                </div>
+            </div>
+            <div class="card-3d p-4 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">متوسط البروتين</p>
+                    <h3 id="stat-avg-protein" class="text-2xl font-black text-white mt-1">0 <span class="text-xs font-normal text-gray-400">غرام</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-fish"></i>
+                </div>
+            </div>
+            <div class="card-3d p-4 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-400 font-medium">معدل النوم</p>
+                    <h3 id="stat-avg-sleep" class="text-2xl font-black text-white mt-1">0 <span class="text-xs font-normal text-gray-400">ساعة</span></h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-bed"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- القسم الأول: البيانات العامة اليومية (اختياري 100%) -->
+        <section class="card-3d p-5 rounded-3xl space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-day" style="color: var(--theme-primary);"></i>
+                    البيانات العامة اليومية (اختياري)
+                </h2>
+                <button type="button" onclick="toggleDateMode()" id="date-mode-btn" class="text-xs px-3 py-1.5 rounded-xl input-3d text-gray-300 hover:text-white">
+                    التحويل للتقويم 📅
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- التاريخ -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">التاريخ</label>
+                    <input type="text" id="daily-date" placeholder="اليوم / تاريخ يدوي" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- ساعات النوم -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">ساعات النوم (ساعة)</label>
+                    <input type="number" step="0.5" id="daily-sleep" placeholder="مثال: 7.5" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- وزن الجسم -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">وزن الجسم (كجم)</label>
+                    <input type="number" step="0.1" id="daily-weight" placeholder="مثال: 80" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- السعرات -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">السعرات الحرارية (kcal)</label>
+                    <input type="number" id="daily-cals" placeholder="مثال: 2500" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- البروتين -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">البروتين (غرام)</label>
+                    <input type="number" id="daily-protein" placeholder="مثال: 160" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- الكارب -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">الكاربوهيدرات (غرام)</label>
+                    <input type="number" id="daily-carbs" placeholder="مثال: 250" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- الدهون -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">الدهون (غرام)</label>
+                    <input type="number" id="daily-fat" placeholder="مثال: 70" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+                <!-- شدة التمرين -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">شدة التمرين العامة</label>
+                    <select id="daily-intensity" class="w-full p-3 rounded-xl input-3d text-sm">
+                        <option value="">اختر الشدة...</option>
+                        <option value="منخفضة">منخفضة</option>
+                        <option value="متوسطة">متوسطة</option>
+                        <option value="عالية">عالية</option>
+                        <option value="شديدة جداً">شديدة جداً</option>
+                    </select>
+                </div>
+                <!-- مدة التمرين -->
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">مدة التمرين الإجمالية (دقائق)</label>
+                    <input type="number" id="daily-duration" placeholder="مثال: 60" class="w-full p-3 rounded-xl input-3d text-sm">
+                </div>
+            </div>
+
+            <!-- رفع صورة الجسم اليومية (اختياري) -->
+            <div class="pt-2">
+                <label class="block text-xs text-gray-400 mb-1"><i class="fa-solid fa-camera mr-1"></i> صورة التطور البدني اليومية (اختياري)</label>
+                <div class="flex items-center gap-3">
+                    <input type="file" id="body-photo-input" accept="image/*" onchange="previewBodyPhoto(event)" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700 cursor-pointer">
+                    <div id="photo-preview-container" class="hidden w-12 h-12 rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 cursor-pointer" onclick="openPhotoModal()">
+                        <img id="photo-preview-thumb" src="" class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- القسم الثاني: بيانات التمارين مع المقارنة الفورية -->
+        <section class="card-3d p-5 rounded-3xl space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-dumbbell" style="color: var(--theme-primary);"></i>
+                    قائمة التمارين اليومية والمقارنة
+                </h2>
+                <button type="button" onclick="addExerciseCard()" class="btn-3d text-xs px-4 py-2 rounded-xl text-white font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> إضافة تمرين
+                </button>
+            </div>
+
+            <div id="exercises-container" class="space-y-4">
+                <!-- تمرين افتراضي أول -->
+            </div>
+        </section>
+
+        <!-- زر حفظ السجل اليومي -->
+        <div class="flex gap-3">
+            <button type="button" onclick="saveDayLog()" class="w-full py-4 rounded-2xl btn-3d text-white font-bold text-base shadow-xl flex items-center justify-center gap-2">
+                <i class="fa-solid fa-floppy-disk"></i> حفظ سجل اليوم والتحديثات
+            </button>
+            <button type="button" onclick="exportDataJSON()" class="px-5 py-4 rounded-2xl input-3d text-gray-300 hover:text-white text-sm font-semibold flex items-center gap-1" title="تصدير نسخة احتياطية">
+                <i class="fa-solid fa-download"></i>
+            </button>
+        </div>
+
+        <!-- القسم الثالث: مدرب الذكاء الاصطناعي (Gemini AI Coach) -->
+        <section class="card-3d p-5 rounded-3xl space-y-4 border-l-4" style="border-left-color: var(--theme-primary);">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-robot" style="color: var(--theme-primary);"></i>
+                    مساعد الذكاء الاصطناعي (Gemini AI Coach)
+                </h2>
+                <span class="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-semibold">متصل بالمحرك</span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <button onclick="askAI('daily')" class="p-3 rounded-2xl input-3d text-xs text-center font-semibold text-gray-300 hover:text-white transition">
+                    <i class="fa-solid fa-chart-line block mb-1 text-base" style="color: var(--theme-primary);"></i> تحليل أداء اليوم
+                </button>
+                <button onclick="askAI('weekly')" class="p-3 rounded-2xl input-3d text-xs text-center font-semibold text-gray-300 hover:text-white transition">
+                    <i class="fa-solid fa-calendar-week block mb-1 text-base" style="color: var(--theme-primary);"></i> تقرير الأسبوع
+                </button>
+                <button onclick="askAI('macros')" class="p-3 rounded-2xl input-3d text-xs text-center font-semibold text-gray-300 hover:text-white transition">
+                    <i class="fa-solid fa-utensils block mb-1 text-base" style="color: var(--theme-primary);"></i> مراجعة الماكروز
+                </button>
+                <button onclick="askAI('tips')" class="p-3 rounded-2xl input-3d text-xs text-center font-semibold text-gray-300 hover:text-white transition">
+                    <i class="fa-solid fa-lightbulb block mb-1 text-base" style="color: var(--theme-primary);"></i> نصائح القوة وزيادة الوزن
+                </button>
+            </div>
+
+            <!-- شاشة مخرجات ومحادثة الـ AI -->
+            <div id="ai-chat-box" class="p-4 rounded-2xl input-3d min-h-[120px] max-h-[250px] overflow-y-auto text-sm text-gray-300 space-y-2">
+                <p class="text-gray-500 text-center italic">أهلاً بك! أنا مدربك الذكي. اضغط على أحد الأزرار بالأعلى أو اكتب سؤالك أدناه لمقارنة أدائك وتطوير مستواك.</p>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="ai-user-prompt" placeholder="اسأل الكوتش عن تمرينك، الأوزان، أو التغذية..." class="w-full p-3 rounded-xl input-3d text-sm" onkeypress="if(event.key==='Enter') sendPromptToAI()">
+                <button onclick="sendPromptToAI()" class="px-5 py-3 rounded-xl btn-3d text-white font-bold text-sm flex items-center justify-center">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- قسم سجلات الأيام السابقة وإدارة البيانات -->
+        <section class="card-3d p-5 rounded-3xl space-y-4">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left" style="color: var(--theme-primary);"></i>
+                    سجلات الأيام السابقة المحفوظة
+                </h2>
+                <div class="flex gap-2">
+                    <button onclick="exportCSV()" class="text-xs px-3 py-1.5 rounded-xl input-3d text-gray-300 hover:text-white">تصدير CSV</button>
+                    <button onclick="clearAllData()" class="text-xs px-3 py-1.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20">مسح الكل</button>
+                </div>
+            </div>
+            <div id="history-list" class="space-y-3 max-h-[350px] overflow-y-auto">
+                <!-- سجلات محفوظة سابقاً -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal عرض صورة الجسم الكبيرة -->
+    <div id="photo-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4" onclick="closePhotoModal()">
+        <div class="relative max-w-lg w-full">
+            <img id="modal-full-img" src="" class="w-full rounded-2xl border border-gray-700 shadow-2xl">
+            <button class="absolute top-3 left-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center" onclick="closePhotoModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <script>
+        let currentTheme = 'cyan';
+        let isCalendarDate = false;
+        let base64BodyPhoto = "";
+        let workoutLogs = JSON.parse(localStorage.getItem('pulse_fit_logs') || '[]');
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.className = `theme-${theme} pb-20`;
+            localStorage.setItem('pulse_fit_theme', theme);
+        }
+
+        // استرجاع الثيم المحفوظ
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('pulse_fit_theme');
+            if (savedTheme) setTheme(savedTheme);
+            
+            // ضبط التاريخ الافتراضي
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('daily-date').value = today;
+
+            if(workoutLogs.length === 0) {
+                addExerciseCard('بنش بريس مستوي', '4', '12-10-8-8', '60, 65, 70, 70', 'تمرير ممتاز');
+                addExerciseCard('تفتيح دمبل', '3', '12-12-12', '16, 18, 18', '');
+                addExerciseCard('بايسبس بار', '3', '10-10-10', '30, 35, 35', '');
+            } else {
+                renderExercisesFromLatest();
+            }
+            updateStats();
+            renderHistory();
+        });
+
+        function toggleDateMode() {
+            const dateInput = document.getElementById('daily-date');
+            const btn = document.getElementById('date-mode-btn');
+            isCalendarDate = !isCalendarDate;
+            if(isCalendarDate) {
+                dateInput.type = 'date';
+                btn.textContent = 'التحويل لنص حر ✍️';
+            } else {
+                dateInput.type = 'text';
+                btn.textContent = 'التحويل للتقويم 📅';
+            }
+        }
+
+        function previewBodyPhoto(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    base64BodyPhoto = e.target.result;
+                    document.getElementById('photo-preview-thumb').src = base64BodyPhoto;
+                    document.getElementById('photo-preview-container').classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function openPhotoModal() {
+            if(base64BodyPhoto) {
+                document.getElementById('modal-full-img').src = base64BodyPhoto;
+                document.getElementById('photo-modal').classList.remove('hidden');
+            }
+        }
+        function closePhotoModal() {
+            document.getElementById('photo-modal').classList.add('hidden');
+        }
+
+        // إضافة بطاقة تمرين مع بحث المقارنة اللحظي
+        function addExerciseCard(name='', sets='', reps='', weights='', notes='') {
+            const container = document.getElementById('exercises-container');
+            const cardId = Date.now() + Math.random();
+            const cardHTML = `
+                <div class="exercise-card p-4 rounded-2xl input-3d space-y-3 relative" data-id="${cardId}">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-gray-400">تمرين جديد</span>
+                        <button type="button" onclick="this.closest('.exercise-card').remove()" class="text-red-400 hover:text-red-300 text-xs"><i class="fa-solid fa-trash"></i> حذف</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">اسم العضلة أو التمرين</label>
+                            <input type="text" class="ex-name w-full p-2.5 rounded-xl input-3d text-sm" placeholder="مثال: بنش بريس" value="${name}" oninput="checkExerciseHistory(this)">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">المجموعات / السحبات</label>
+                            <input type="text" class="ex-sets w-full p-2.5 rounded-xl input-3d text-sm" placeholder="مثال: 4" value="${sets}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">التكرارات / العدات</label>
+                            <input type="text" class="ex-reps w-full p-2.5 rounded-xl input-3d text-sm" placeholder="مثال: 12-12-10-8" value="${reps}">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">الأوزان (كجم)</label>
+                            <input type="text" class="ex-weights w-full p-2.5 rounded-xl input-3d text-sm" placeholder="مثال: 60, 65, 70" value="${weights}">
+                        </div>
+                    </div>
+                    <div>
+                        <input type="text" class="ex-notes w-full p-2.5 rounded-xl input-3d text-xs" placeholder="ملاحظات التمرين (اختياري)..." value="${notes}">
+                    </div>
+                    <!-- حقل المقارنة الفورية مع آخر أداء -->
+                    <div class="comparison-box hidden bg-black/40 p-2.5 rounded-xl border border-blue-500/20 text-xs text-blue-300 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-sm"></i>
+                        <span class="comp-text">آخر أداء مسجل: ...</span>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', cardHTML);
+        }
+
+        function renderExercisesFromLatest() {
+            if(workoutLogs.length > 0) {
+                const latest = workoutLogs[0];
+                if(latest.date) document.getElementById('daily-date').value = latest.date;
+                if(latest.sleep) document.getElementById('daily-sleep').value = latest.sleep;
+                if(latest.weight) document.getElementById('daily-weight').value = latest.weight;
+                if(latest.cals) document.getElementById('daily-cals').value = latest.cals;
+                if(latest.protein) document.getElementById('daily-protein').value = latest.protein;
+                if(latest.carbs) document.getElementById('daily-carbs').value = latest.carbs;
+                if(latest.fat) document.getElementById('daily-fat').value = latest.fat;
+                if(latest.intensity) document.getElementById('daily-intensity').value = latest.intensity;
+                if(latest.duration) document.getElementById('daily-duration').value = latest.duration;
+
+                const container = document.getElementById('exercises-container');
+                container.innerHTML = '';
+                if(latest.exercises && latest.exercises.length > 0) {
+                    latest.exercises.forEach(ex => {
+                        addExerciseCard(ex.name, ex.sets, ex.reps, ex.weights, ex.notes);
+                    });
+                } else {
+                    addExerciseCard();
+                }
+            } else {
+                addExerciseCard();
+            }
+        }
+
+        // مقارنة أداء التمرين فوراً مع السجلات القديمة
+        function checkExerciseHistory(inputElement) {
+            const exerciseName = inputElement.value.trim().toLowerCase();
+            const card = inputElement.closest('.exercise-card');
+            const compBox = card.querySelector('.comparison-box');
+            const compText = card.querySelector('.comp-text');
+
+            if(!exerciseName) {
+                compBox.classList.add('hidden');
+                return;
+            }
+
+            // البحث في السجلات القديمة
+            let foundPast = null;
+            for(let log of workoutLogs) {
+                if(log.exercises) {
+                    const match = log.exercises.find(e => e.name.toLowerCase() === exerciseName);
+                    if(match) {
+                        foundPast = { date: log.date, ...match };
+                        break;
+                    }
+                }
+            }
+
+            if(foundPast) {
+                compText.textContent = `آخر أداء (${foundPast.date}): أوزان [${foundPast.weights || 'غير محدد'}] | عدات [${foundPast.reps || 'غير محدد'}]`;
+                compBox.classList.remove('hidden');
+            } else {
+                compBox.classList.add('hidden');
+            }
+        }
+
+        function saveDayLog() {
+            const exercises = [];
+            document.querySelectorAll('.exercise-card').forEach(card => {
+                exercises.push({
+                    name: card.querySelector('.ex-name').value,
+                    sets: card.querySelector('.ex-sets').value,
+                    reps: card.querySelector('.ex-reps').value,
+                    weights: card.querySelector('.ex-weights').value,
+                    notes: card.querySelector('.ex-notes').value
+                });
+            });
+
+            const dayData = {
+                id: Date.now(),
+                date: document.getElementById('daily-date').value || 'بدون تاريخ',
+                sleep: document.getElementById('daily-sleep').value,
+                weight: document.getElementById('daily-weight').value,
+                cals: document.getElementById('daily-cals').value,
+                protein: document.getElementById('daily-protein').value,
+                carbs: document.getElementById('daily-carbs').value,
+                fat: document.getElementById('daily-fat').value,
+                intensity: document.getElementById('daily-intensity').value,
+                duration: document.getElementById('daily-duration').value,
+                photo: base64BodyPhoto,
+                exercises: exercises
+            };
+
+            workoutLogs.unshift(dayData);
+            localStorage.setItem('pulse_fit_logs', JSON.stringify(workoutLogs));
+            updateStats();
+            renderHistory();
+            alert('تم حفظ سجل اليوم بنجاح!');
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total-workouts').textContent = workoutLogs.length;
+            const totalCals = workoutLogs.reduce((acc, curr) => acc + (parseFloat(curr.cals) || 0), 0);
+            document.getElementById('stat-total-cals').innerHTML = `${totalCals} <span class="text-xs font-normal text-gray-400">سعرة</span>`;
+            
+            const validProtein = workoutLogs.filter(l => l.protein);
+            const avgProtein = validProtein.length > 0 ? Math.round(validProtein.reduce((acc, curr) => acc + parseFloat(curr.protein), 0) / validProtein.length) : 0;
+            document.getElementById('stat-avg-protein').innerHTML = `${avgProtein} <span class="text-xs font-normal text-gray-400">غرام</span>`;
+
+            const validSleep = workoutLogs.filter(l => l.sleep);
+            const avgSleep = validSleep.length > 0 ? (validSleep.reduce((acc, curr) => acc + parseFloat(curr.sleep), 0) / validSleep.length).toFixed(1) : 0;
+            document.getElementById('stat-avg-sleep').innerHTML = `${avgSleep} <span class="text-xs font-normal text-gray-400">ساعة</span>`;
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+            if(workoutLogs.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">لا توجد سجلات محفوظة حتى الآن.</p>';
+                return;
+            }
+            workoutLogs.forEach((log, index) => {
+                list.innerHTML += `
+                    <div class="p-3 rounded-2xl input-3d flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-white block mb-1">📅 ${log.date} | وزن: ${log.weight || '-'} كجم | بروتين: ${log.protein || '-'}غ</span>
+                            <span class="text-gray-400">${log.exercises.length} تمارين مسجلة | سعرات: ${log.cals || 0} kcal</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadLog(${index})" class="px-3 py-1.5 rounded-xl btn-3d text-white font-semibold">تحميل</button>
+                            <button onclick="deleteLog(${index})" class="px-2.5 py-1.5 rounded-xl bg-red-500/10 text-red-400"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function loadLog(index) {
+            const log = workoutLogs[index];
+            document.getElementById('daily-date').value = log.date;
+            document.getElementById('daily-sleep').value = log.sleep || '';
+            document.getElementById('daily-weight').value = log.weight || '';
+            document.getElementById('daily-cals').value = log.cals || '';
+            document.getElementById('daily-protein').value = log.protein || '';
+            document.getElementById('daily-carbs').value = log.carbs || '';
+            document.getElementById('daily-fat').value = log.fat || '';
+            document.getElementById('daily-intensity').value = log.intensity || '';
+            document.getElementById('daily-duration').value = log.duration || '';
+            base64BodyPhoto = log.photo || '';
+            if(base64BodyPhoto) {
+                document.getElementById('photo-preview-thumb').src = base64BodyPhoto;
+                document.getElementById('photo-preview-container').classList.remove('hidden');
+            } else {
+                document.getElementById('photo-preview-container').classList.add('hidden');
+            }
+
+            const container = document.getElementById('exercises-container');
+            container.innerHTML = '';
+            if(log.exercises && log.exercises.length > 0) {
+                log.exercises.forEach(ex => {
+                    addExerciseCard(ex.name, ex.sets, ex.reps, ex.weights, ex.notes);
+                });
+            } else {
+                addExerciseCard();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteLog(index) {
+            workoutLogs.splice(index, 1);
+            localStorage.setItem('pulse_fit_logs', JSON.stringify(workoutLogs));
+            updateStats();
+            renderHistory();
+        }
+
+        function clearAllData() {
+            if(confirm('هل أنت متأكد من مسح جميع السجلات؟')) {
+                workoutLogs = [];
+                localStorage.removeItem('pulse_fit_logs');
+                updateStats();
+                renderHistory();
+                window.location.reload();
+            }
+        }
+
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(workoutLogs));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "pulse_fit_backup.json");
+            dlAnchorElem.click();
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Date,Weight,Sleep,Calories,Protein,Carbs,Fat,Duration\n";
+            workoutLogs.forEach(log => {
+                csvContent += `${log.date},${log.weight},${log.sleep},${log.cals},${log.protein},${log.carbs},${log.fat},${log.duration}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "pulse_fit_report.csv");
+            link.click();
+        }
+
+        // محاكاة وتكامل أداء الـ AI Coach
+        function askAI(type) {
+            const chatBox = document.getElementById('ai-chat-box');
+            let response = "";
+            const latest = workoutLogs.length > 0 ? workoutLogs[0] : null;
+
+            if(type === 'daily') {
+                if(!latest) { response = "لا توجد بيانات مسجلة لليوم لأقوم بتحليلها."; }
+                else {
+                    response = `تحليل أداء يوم (${latest.date}): لقد سجلت إجمالي ${latest.exercises.length} تمارين بمدة ${latest.duration || 0} دقيقة. معدل البروتين لديك (${latest.protein || 0}غ) والسعرات (${latest.cals || 0} kcal). استمر بهذا النسق وحافظ على النوم الجيد (${latest.sleep || 0} ساعات).`;
+                }
+            } else if(type === 'weekly') {
+                const totalW = workoutLogs.length;
+                response = `تقرير الفترة العامة: لديك ${totalW} سجلات محفوظة. تطور الأوزان والقوة يظهر استقراراً ملحوظاً. ننصحك بالاستمرار في زيادة الأحمال التدريجية (Progressive Overload) كل أسبوع بنسبة 2.5% إلى 5%.`;
+            } else if(type === 'macros') {
+                const avgP = workoutLogs.length > 0 ? Math.round(workoutLogs.reduce((a,b)=>a+(parseFloat(b.protein)||0),0)/workoutLogs.length) : 0;
+                const avgC = workoutLogs.length > 0 ? Math.round(workoutLogs.reduce((a,b)=>a+(parseFloat(b.carbs)||0),0)/workoutLogs.length) : 0;
+                response = `تحليل الماكروز المتوسط: متوسط البروتين المسجل هو ${avgP}غ ومتوسط الكارب ${avgC}غ. لتضخيم عضلي مثالي، حافظ على استهلاك 1.6 إلى 2.2 غرام بروتين لكل كيلو من وزن جسمك.`;
+            } else if(type === 'tips') {
+                response = `نصائح ذهبية لزيادة الكتلة العضلية والقوة: 1) النوم لـ 8 ساعات يومياً لإصلاح الألياف العضلية. 2) ثبات الأوزان لفترة طويلة يعني وجوب زيادة التكرارات أو الأوزان قليلاً. 3) شرب الماء بكثافة أثناء التمرين.`;
+            }
+
+            chatBox.innerHTML += `<div class="p-3 rounded-xl bg-black/40 border border-blue-500/20"><p class="text-xs text-white font-bold mb-1">🤖 المدرب الذكي (Gemini AI):</p><p class="text-xs text-gray-300">${response}</p></div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendPromptToAI() {
+            const input = document.getElementById('ai-user-prompt');
+            const chatBox = document.getElementById('ai-chat-box');
+            const val = input.value.trim();
+            if(!val) return;
+
+            chatBox.innerHTML += `<div class="p-3 rounded-xl bg-blue-500/10"><p class="text-xs text-white font-bold mb-1">👤 أنت:</p><p class="text-xs text-gray-300">${val}</p></div>`;
+            input.value = '';
+
+            setTimeout(() => {
+                let aiReply = `بناءً على سؤالك ومقارنة سجلاتك التدريبية، أنصحك بالتركيز على التدرج بالحمل التدريبي وضبط النوم. أدائك العام ممتاز ويظهر تحسناً في القوة البدنية. هل تحتاج جدولاً أو تعديلاً على التمارين؟`;
+                chatBox.innerHTML += `<div class="p-3 rounded-xl bg-black/40 border border-blue-500/20"><p class="text-xs text-white font-bold mb-1">🤖 المدرب الذكي (Gemini AI):</p><p class="text-xs text-gray-300">${aiReply}</p></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 800);
+        }
+    </script>
+</body>
+</html>
